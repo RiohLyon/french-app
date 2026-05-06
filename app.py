@@ -81,19 +81,40 @@ if mode != st.session_state.mode:
 st.sidebar.markdown("---")
 st.sidebar.header("絞り込み")
 
-# マルチセレクトの設定
+# 絞り込み形式の作成
 selected_levels = st.sidebar.multiselect("レベル選択", options=list(df['level'].unique()))
-selected_themes = st.sidebar.multiselect("テーマ選択", options=list(df['theme'].unique()))
+
+# サイドバーのテーマ選択肢をバラバラにする
+all_themes = set()
+for t in df['theme'].dropna():
+    for item in str(t).split(','):
+        all_themes.add(item.strip())
+
+selected_themes = st.sidebar.multiselect("テーマ選択", options=sorted(list(all_themes)))
 
 # --- ここで「mode」を使った条件分岐を行う ---
 if mode == "復習（間違えた問題）":
     filtered_df = df.iloc[st.session_state.wrong_list]
 else:
     filtered_df = df.copy()
+    
+    # レベルでの絞り込み
     if selected_levels:
         filtered_df = filtered_df[filtered_df['level'].isin(selected_levels)]
+    
+    # テーマでの絞り込み（複数テーマ対応版）
     if selected_themes:
-        filtered_df = filtered_df[filtered_df['theme'].isin(selected_themes)]
+        # 各行の theme 列をカンマで分割してリストにし、選択されたテーマが含まれるかチェックする
+        def check_theme(row_theme):
+            if pd.isna(row_theme):
+                return False
+            # 「健康, 生活」を ['健康', '生活'] に分解
+            themes_in_row = [t.strip() for t in str(row_theme).split(',')]
+            # 選択されたテーマのどれか一つでも含まれていれば True
+            return any(theme in themes_in_row for theme in selected_themes)
+
+        # 条件に合う行だけを残す
+        filtered_df = filtered_df[filtered_df['theme'].apply(check_theme)]
 
 search_query = ""
 if mode == "単語検索":
