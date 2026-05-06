@@ -2,6 +2,35 @@ import streamlit as st
 import pandas as pd
 import random
 
+# --- 音声再生用の関数（安定版） --- #
+def speak_french(text):
+    if text:
+        safe_text = text.replace("'", "\\'").replace("\n", " ")
+        import time
+        # 現在の時刻からユニークなIDを作成
+        run_id = int(time.time() * 1000)
+
+        # JavaScriptのコードの中に run_id をコメントとして埋め込む！
+        # これにより、毎回「全く新しいHTMLが生成された」とStreamlitが勘違いして、毎回実行してくれます。
+        js_code = f"""
+            <script>
+            // 実行ID: {run_id} 
+            (function() {{
+                var synth = window.speechSynthesis;
+                synth.cancel(); // 進行中の音声を止める
+
+                var utter = new SpeechSynthesisUtterance('{safe_text}');
+                utter.lang = 'fr-FR';
+                utter.rate = 0.9;
+                
+                // 再生
+                synth.speak(utter);
+            }})();
+            </script>
+        """
+        # key引数は削除し、毎回異なる文字列になった js_code だけを渡します
+        st.components.v1.html(js_code, height=0)
+
 # サイドバーをデフォルトで閉じておく（画面を広く使うため）
 st.set_page_config(
     page_title="フランス語単語学習",
@@ -175,7 +204,19 @@ if mode == "学習" or mode == "単語検索":
         # 検索の場合は最初の1件を表示、学習の場合は現在の番号を表示
         word_row = filtered_df.iloc[0] if mode == "単語検索" else filtered_df.iloc[st.session_state.current_word_idx]
         
-        st.subheader(f"単語: :blue[{word_row['french']}]")
+        # 画面の横幅を「8対2」の割合で2つの列に分割します
+        col_text, col_btn = st.columns([0.8, 0.2])
+        
+        with col_text:
+            st.subheader(f"単語: :blue[{word_row['french']}]")
+            
+        with col_btn:
+            # 見出し（subheader）とボタンの縦の「高さ（位置）」を綺麗に揃えるための微調整
+            st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+            
+            # ボタンのテキストを記号だけにしてスッキリさせる
+            if st.button("🔊", help="発音を聞く", use_container_width=True):
+                speak_french(word_row['french'])
 
         # 1. 日本語（意味）の判定
         if pd.isna(word_row['japanese']):
@@ -278,3 +319,8 @@ else: # 演習または復習モード
 
 # デバッグ用：間違えたリストの中身を表示
 st.sidebar.write(f"間違えた単語数: {len(st.session_state.wrong_list)}")
+
+
+
+
+
