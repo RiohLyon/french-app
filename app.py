@@ -31,11 +31,11 @@ def speak_french(text):
         # key引数は削除し、毎回異なる文字列になった js_code だけを渡します
         st.components.v1.html(js_code, height=0)
 
-# サイドバーをデフォルトで閉じておく（画面を広く使うため）
+# --- 初期設定 --- #
 st.set_page_config(
     page_title="フランス語単語学習",
     layout="centered",
-    initial_sidebar_state="collapsed" # スマホだとサイドバーが邪魔なので最初は隠す
+    initial_sidebar_state="collapsed" # スマホ用にサイドバーを隠す
 )
 
 st.title("🇫🇷 フランス語単語アプリ")
@@ -245,9 +245,29 @@ if mode == "学習" or mode == "単語検索":
         if 'image_file' in word_row and pd.notna(word_row['image_file']):
             st.image(f"images/{word_row['image_file']}", width=300)
         
-        if mode == "学習" and st.button("次の単語へ"):
-            st.session_state.current_word_idx = None
-            st.rerun()
+        # --- 修正部分：学習モードのナビゲーションボタン ---
+        if mode == "学習":
+            # 横に2つ並べる
+            c1, c2 = st.columns(2)
+            
+            with c1:
+                # 履歴があるときだけ「前の単語へ」ボタンを有効にする
+                if st.session_state.history:
+                    if st.button("前の単語へ", use_container_width=True):
+                        # 履歴から最後の番号を取り出して、今の番号にセット
+                        st.session_state.current_word_idx = st.session_state.history.pop()
+                        st.rerun()
+                else:
+                    # 履歴が空ならボタンを無効化（グレーアウト）
+                    st.button("前の単語へ", use_container_width=True, disabled=True)
+            
+            with c2:
+                if st.button("次の単語へ", use_container_width=True):
+                    # 次に行く前に、今の番号を履歴に保存する
+                    st.session_state.history.append(st.session_state.current_word_idx)
+                    # 今の番号をクリアして、ランダムに次の単語を選ばせる
+                    st.session_state.current_word_idx = None
+                    st.rerun()
 
 else: # 演習または復習モード
     st.subheader(f"この単語の意味は？ : :blue[{word_row['french']}]")
