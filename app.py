@@ -110,6 +110,7 @@ if mode != st.session_state.mode:
 st.sidebar.markdown("---")
 st.sidebar.header("絞り込み")
 
+
 # 絞り込み形式の作成
 selected_levels = st.sidebar.multiselect("レベル選択", options=list(df['level'].unique()))
 
@@ -120,6 +121,17 @@ for t in df['theme'].dropna():
         all_themes.add(item.strip())
 
 selected_themes = st.sidebar.multiselect("テーマ選択", options=sorted(list(all_themes)))
+
+# デバッグ用：間違えたリストの中身を表示
+st.sidebar.write(f"間違えた単語数: {len(st.session_state.wrong_list)}")
+
+# --- サイドバー：フィードバック機能 ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("💡 フィードバック")
+st.sidebar.write("不備の報告や、改善案をお待ちしています！")
+
+# リンクボタンを配置（URLは作成したGoogleフォームのものに書き換えてください）
+st.sidebar.link_button("報告フォームを開く", "https://docs.google.com/forms/d/e/1FAIpQLSfqiuWtqEr5AUaGwCaZWoK0Zm0bFQfSL2eg68k6hkknQdLZ4Q/viewform?usp=publish-editor")
 
 # --- ここで「mode」を使った条件分岐を行う ---
 if mode == "復習（間違えた問題）":
@@ -334,12 +346,6 @@ else: # 演習または復習モード
                 st.session_state.choices = []
                 st.session_state.answered = False
                 st.rerun()
-    
-    
-
-# デバッグ用：間違えたリストの中身を表示
-st.sidebar.write(f"間違えた単語数: {len(st.session_state.wrong_list)}")
-
 
 
 
