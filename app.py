@@ -194,6 +194,11 @@ if st.session_state.current_word_idx is not None:
     if st.session_state.current_word_idx >= len(filtered_df):
         st.session_state.current_word_idx = None
 
+# 演習モードまたは復習モードの場合、日本語訳(japanese)が空の行を最初から除外する
+if mode in ["演習", "復習（間違えた問題）"]:
+    # .notna() は「値が入っている（空じゃない）」行だけを抽出するメソッドです
+    filtered_df = filtered_df[filtered_df['japanese'].notna()]
+
 # --- 4. クイズの状態管理 ---
 if 'current_word_idx' not in st.session_state or st.session_state.current_word_idx is None:
     # filtered_dfのインデックスを直接使うのではなく、現在の行の位置をランダムに選ぶ
@@ -322,7 +327,7 @@ else: # 演習または復習モード
 
     # --- 4. 次へ/前へボタン（ここは変更なし） ---
     col1, col2 = st.columns(2)
-    
+
     with col1:
         # 前の問題ボタン
         # 履歴が空じゃない時だけボタンを押せるようにする
@@ -336,16 +341,20 @@ else: # 演習または復習モード
         else:
             st.button("前の問題へ", use_container_width=True, disabled=True)
 
-    with col2:    
-        if st.session_state.answered:
-            if st.button("次の問題へ", use_container_width=True):
-                # 次に行く前に、今の番号を履歴に保存する
-                st.session_state.history.append(st.session_state.current_word_idx)
-                
-                st.session_state.current_word_idx = None # 新しい番号を選ばせる
-                st.session_state.choices = []
-                st.session_state.answered = False
-                st.rerun()
+        with col2:    
+            if st.session_state.answered:
+                if st.button("次の問題へ", use_container_width=True):
+                    # 次に行く前に、今の番号を履歴に保存する
+                    st.session_state.history.append(st.session_state.current_word_idx)
+                    
+                    st.session_state.current_word_idx = None # 新しい番号を選ばせる
+                    st.session_state.choices = []
+                    st.session_state.answered = False
+                    st.rerun()
+    
+    
+
+
 
 
 
