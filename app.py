@@ -53,11 +53,18 @@ st.markdown("""
         flex-grow: 1 !important;
     }
     
-    /* ボタン自体の角を少し鋭くして密着感を出す（お好みで） */
+    /* 例：ボタンを角丸にして、ホバー時に少し浮き上がるようにする */
     .stButton > button {
         width: 100%;
-        border-radius: 0px; /* 角を丸めない場合は0、丸めるなら4px程度 */
-        margin: 0px;
+        border-radius: 25px; /* 角を大きく丸める */
+        background-color: #f0f8ff; /* 優しい青色 */
+        border: 2px solid #87ceeb;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+    .stButton > button:hover {
+        transform: scale(1.02); /* マウスを乗せると少し大きくなる */
+        background-color: #e0f7fa;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -125,13 +132,34 @@ selected_themes = st.sidebar.multiselect("テーマ選択", options=sorted(list(
 # デバッグ用：間違えたリストの中身を表示
 st.sidebar.write(f"間違えた単語数: {len(st.session_state.wrong_list)}")
 
-# --- サイドバー：フィードバック機能 ---
+# --- サイドバー：フィードバック機能と免責事項とアップデート情報 ---
 st.sidebar.markdown("---")
-st.sidebar.subheader("💡 フィードバック")
-st.sidebar.write("不備の報告や、改善案をお待ちしています！")
 
-# リンクボタンを配置（URLは作成したGoogleフォームのものに書き換えてください）
-st.sidebar.link_button("報告フォームを開く", "https://docs.google.com/forms/d/e/1FAIpQLSfqiuWtqEr5AUaGwCaZWoK0Zm0bFQfSL2eg68k6hkknQdLZ4Q/viewform?usp=publish-editor")
+# 1. 免責事項（クリックすると開く）
+with st.sidebar.expander("⚖️ 免責事項"):
+    # st.caption を使うと、注釈用の少し小さくて上品な文字になります
+    st.caption("""
+    本アプリに掲載されている情報の正確性については万全を期していますが、利用者が本アプリの情報を用いて行う一切の行為について、開発者は何ら責任を負うものではありません。
+    学習の補助ツールとしてご活用ください。
+    """)
+
+# 2.フィードバック機能
+with st.sidebar.expander("💡 フィードバック"):
+    st.caption("不備の報告や、機能の改善案、追加してほしい単語のリクエストなどをお待ちしています！")
+    # エクスパンダーの中にリンクボタンを配置
+    # ※withの中なので「st.sidebar.」ではなく「st.link_button」と書くだけで中に入ります
+    st.link_button(
+        "報告フォームを開く", 
+        "https://docs.google.com/forms/d/e/1FAIpQLSfqiuWtqEr5AUaGwCaZWoK0Zm0bFQfSL2eg68k6hkknQdLZ4Q/viewform?usp=publish-editor",
+        use_container_width=True
+    )
+
+# 3. アップデート情報（クリックすると開く）
+with st.sidebar.expander("🚀 アップデート情報"):
+    st.caption("""
+    **v1.0.0 (2026/06/11)**
+    - アプリ初期版リリース
+    """)
 
 # --- ここで「mode」を使った条件分岐を行う ---
 if mode == "復習（間違えた問題）":
@@ -164,8 +192,9 @@ if mode == "単語検索":
 # --- データのフィルタリング部分を更新 ---
 if mode == "単語検索":
     if search_query:
-        # 入力された文字が french 列に含まれているか検索
-        filtered_df = df[df['french'].str.lower() == search_query]
+        # 変更点： '==' ではなく '.str.contains()' を使って「部分一致」にします
+        # na=False は、空欄のデータが混ざっていてもエラーを出さないためのおまじないです
+        filtered_df = df[df['french'].str.lower().str.contains(search_query, na=False)]
     else:
         st.info("検索したいフランス語を入力してください。")
         st.stop()
@@ -213,25 +242,45 @@ original_idx = filtered_df.index[st.session_state.current_word_idx]
 
 # --- 5. 画面表示 ---
 
-# 「学習」または「単語検索」の場合は同じ見た目にする
-if mode == "学習" or mode == "単語検索":
+if mode == "単語検索":
+    # --- 単語検索モードの画面 ---
     if filtered_df.empty:
-        st.warning(f"「{search_query}」は見つかりませんでした。")
+        st.warning(f"「{search_query}」を含む単語は見つかりませんでした。")
     else:
-        # 検索の場合は最初の1件を表示、学習の場合は現在の番号を表示
-        word_row = filtered_df.iloc[0] if mode == "単語検索" else filtered_df.iloc[st.session_state.current_word_idx]
+        st.success(f"🔍 {len(filtered_df)}件の単語が見つかりました！")
         
-        # 画面の横幅を「8対2」の割合で2つの列に分割します
+        # 見つかった単語を for ループで全て表示する
+        for index, word_row in filtered_df.iterrows():
+            col_text, col_btn = st.columns([0.8, 0.2])
+            with col_text:
+                st.subheader(f"単語: :blue[{word_row['french']}]")
+            with col_btn:
+                st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
+                # 複数ボタンが並ぶため、個別の名前(key)をつける必要があります
+                if st.button("🔊", key=f"search_btn_{index}", help="発音を聞く", use_container_width=True):
+                    speak_french(word_row['french'])
+
+            word_type = f" ({word_row['type']})" if pd.notna(word_row['type']) else ""
+            st.write(f"意味: **{word_row['japanese']}** {word_type}")
+            
+            if pd.notna(word_row['explanation']):
+                st.write(f"説明: {word_row['explanation']}")
+            
+            st.markdown("---") # 複数の結果を見やすくするための区切り線
+
+elif mode == "学習":
+    # --- 学習モードの画面（基本はそのまま） ---
+    if filtered_df.empty:
+        st.warning("条件に合う単語がありません。")
+    else:
+        word_row = filtered_df.iloc[st.session_state.current_word_idx]
+        
         col_text, col_btn = st.columns([0.8, 0.2])
-        
         with col_text:
             st.subheader(f"単語: :blue[{word_row['french']}]")
             
         with col_btn:
-            # 見出し（subheader）とボタンの縦の「高さ（位置）」を綺麗に揃えるための微調整
             st.markdown("<div style='padding-top: 10px;'></div>", unsafe_allow_html=True)
-            
-            # ボタンのテキストを記号だけにしてスッキリさせる
             if st.button("🔊", help="発音を聞く", use_container_width=True):
                 speak_french(word_row['french'])
 
@@ -239,7 +288,6 @@ if mode == "学習" or mode == "単語検索":
         if pd.isna(word_row['japanese']):
             st.warning("⚠️ 日本語がまだ登録されていません")
         else:
-            # 品詞(type)も空の可能性があるので考慮
             word_type = f" ({word_row['type']})" if pd.notna(word_row['type']) else ""
             st.write(f"意味: **{word_row['japanese']}** {word_type}")
 
@@ -255,36 +303,26 @@ if mode == "学習" or mode == "単語検索":
         else:
             st.write(f"例文: *{word_row['example']}*")
 
-        # 4. レベルとテーマ（ここは登録されている前提で表示）
         st.caption(f"レベル: {word_row['level']} / テーマ: {word_row['theme']}")
-        
         
         if 'image_file' in word_row and pd.notna(word_row['image_file']):
             st.image(f"images/{word_row['image_file']}", width=300)
         
-        # --- 修正部分：学習モードのナビゲーションボタン ---
-        if mode == "学習":
-            # 横に2つ並べる
-            c1, c2 = st.columns(2)
-            
-            with c1:
-                # 履歴があるときだけ「前の単語へ」ボタンを有効にする
-                if st.session_state.history:
-                    if st.button("前の単語へ", use_container_width=True):
-                        # 履歴から最後の番号を取り出して、今の番号にセット
-                        st.session_state.current_word_idx = st.session_state.history.pop()
-                        st.rerun()
-                else:
-                    # 履歴が空ならボタンを無効化（グレーアウト）
-                    st.button("前の単語へ", use_container_width=True, disabled=True)
-            
-            with c2:
-                if st.button("次の単語へ", use_container_width=True):
-                    # 次に行く前に、今の番号を履歴に保存する
-                    st.session_state.history.append(st.session_state.current_word_idx)
-                    # 今の番号をクリアして、ランダムに次の単語を選ばせる
-                    st.session_state.current_word_idx = None
+        # 前へ・次へボタンの処理
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.session_state.history:
+                if st.button("前の単語へ", use_container_width=True):
+                    st.session_state.current_word_idx = st.session_state.history.pop()
                     st.rerun()
+            else:
+                st.button("前の単語へ", use_container_width=True, disabled=True)
+        
+        with c2:
+            if st.button("次の単語へ", use_container_width=True):
+                st.session_state.history.append(st.session_state.current_word_idx)
+                st.session_state.current_word_idx = None
+                st.rerun()
 
 else: # 演習または復習モード
     st.subheader(f"この単語の意味は？ : :blue[{word_row['french']}]")
@@ -353,9 +391,3 @@ else: # 演習または復習モード
                     st.rerun()
     
     
-
-
-
-
-
-
