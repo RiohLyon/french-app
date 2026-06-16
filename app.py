@@ -157,7 +157,7 @@ with st.sidebar.expander("💡 フィードバック"):
     # ※withの中なので「st.sidebar.」ではなく「st.link_button」と書くだけで中に入ります
     st.link_button(
         "報告フォームを開く", 
-        "https://docs.google.com/forms/d/e/1FAIpQLSfqiuWtqEr5AUaGwCaZWoK0Zm0bFQfSL2eg68k6hkknQdLZ4Q/viewform?usp=publish-editor",
+        "https://docs.google.com/forms/d/e/1FAIpQLSc-x7ETuiWb4iaXnWKmE9_P6atTD5A35-izloc-wudhqQyq2Q/viewform?usp=publish-editor",
         use_container_width=True
     )
 
