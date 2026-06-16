@@ -70,12 +70,19 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 1. データの読み込み（スプレッドシート連携版） ---
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1S9sf5y097VvL3LjdbOuguAv4Wi-BAQq57DhrXY8qpc4/export?format=csv&gid=0"
+if "sheet_url" in st.secrets:
+    SHEET_URL = st.secrets["sheet_url"]
+else:
+    st.error("エラー: secrets.toml に 'sheet_url' が設定されていません。")
+    st.stop()
 
-@st.cache_data(ttl=600) # 10分間（600秒）キャッシュを保持する設定
+@st.cache_data(ttl=600) # 10分間キャッシュを保持
 def load_data():
-    # CSVファイルの代わりにURLを指定して読み込む
+    # URLからCSVとして読み込み
     df = pd.read_csv(SHEET_URL)
+    
+    # 演習・復習モードでのバグを防ぐため、日本語訳(japanese)が空の行を最初から除外する
+    df = df[df['japanese'].notna()]
     
     # ダミーリストの作成
     df['dummy_list'] = df['dummies'].apply(lambda x: [i.strip() for i in str(x).split(',')])
@@ -391,3 +398,9 @@ else: # 演習または復習モード
                     st.rerun()
     
     
+
+
+
+
+
+
