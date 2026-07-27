@@ -38,7 +38,27 @@ st.set_page_config(
     initial_sidebar_state="collapsed" # スマホ用にサイドバーを隠す
 )
 
-st.title("🇫🇷 フランス語単語アプリ")
+# 1. アプリの開始状態（フラグ）を初期化
+if "started" not in st.session_state:
+    st.session_state.started = False
+
+# 2. まだスタートしていない場合のみタイトルとスタートボタンを表示
+if not st.session_state.started:
+    st.title("🇫🇷 フランス語単語アプリ")
+    st.write("たのしくフランス語の単語をおぼえよう！")
+
+    # 「はじめる」ボタンが押されたらフラグをTrueにして画面を再描画
+    if st.button("🚀 はじめる", use_container_width=True):
+        st.session_state.started = True
+        st.rerun()  # 画面を更新してタイトルを消す
+    
+    # ここで処理を止めることで、最初の画面ではタイトルとボタンだけを表示
+    st.stop()
+
+# --- ここから下は「スタート後」に表示したいメインの処理 ---
+
+# メイン画面には小さめの見出し（st.captionやst.subheader）を出しておくと親切です
+st.caption("🇫🇷 フランス語単語アプリ")
 st.markdown("""
     <style>
     /* 横並びブロックの隙間（gap）をゼロにする */
@@ -157,7 +177,7 @@ with st.sidebar.expander("💡 フィードバック"):
     # ※withの中なので「st.sidebar.」ではなく「st.link_button」と書くだけで中に入ります
     st.link_button(
         "報告フォームを開く", 
-        "https://docs.google.com/forms/d/e/1FAIpQLSc-x7ETuiWb4iaXnWKmE9_P6atTD5A35-izloc-wudhqQyq2Q/viewform?usp=publish-editor",
+        "https://docs.google.com/forms/d/e/1FAIpQLSfqiuWtqEr5AUaGwCaZWoK0Zm0bFQfSL2eg68k6hkknQdLZ4Q/viewform?usp=publish-editor",
         use_container_width=True
     )
 
