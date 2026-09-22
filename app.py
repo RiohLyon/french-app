@@ -55,10 +55,32 @@ if not st.session_state.started:
     # ここで処理を止めることで、最初の画面ではタイトルとボタンだけを表示
     st.stop()
 
+# --- 1. データの読み込み（スプレッドシート連携版） ---
+if "sheet_url" in st.secrets:
+    SHEET_URL = st.secrets["sheet_url"]
+else:
+    st.error("エラー: secrets.toml に 'sheet_url' が設定されていません。")
+    st.stop()
+
+@st.cache_data(ttl=600) # 10分間キャッシュを保持
+def load_data():
+    # URLからCSVとして読み込み
+    df = pd.read_csv(SHEET_URL)
+    
+    # 演習・復習モードでのバグを防ぐため、日本語訳(japanese)が空の行を最初から除外する
+    df = df[df['japanese'].notna()]
+    
+    # ダミーリストの作成
+    df['dummy_list'] = df['dummies'].apply(lambda x: [i.strip() for i in str(x).split(',')])
+    return df
+
+df = load_data()
+
 # --- ここから下は「スタート後」に表示したいメインの処理 ---
 
 # メイン画面には小さめの見出し（st.captionやst.subheader）を出しておくと親切です
-st.caption("🇫🇷 フランス語単語アプリ")
+nb_words = len(df)
+st.caption(f"🇫🇷 フランス語単語アプリ: {nb_words} 語")
 st.markdown("""
     <style>
     /* 横並びブロックの隙間（gap）をゼロにする */
@@ -88,27 +110,6 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-
-# --- 1. データの読み込み（スプレッドシート連携版） ---
-if "sheet_url" in st.secrets:
-    SHEET_URL = st.secrets["sheet_url"]
-else:
-    st.error("エラー: secrets.toml に 'sheet_url' が設定されていません。")
-    st.stop()
-
-@st.cache_data(ttl=600) # 10分間キャッシュを保持
-def load_data():
-    # URLからCSVとして読み込み
-    df = pd.read_csv(SHEET_URL)
-    
-    # 演習・復習モードでのバグを防ぐため、日本語訳(japanese)が空の行を最初から除外する
-    df = df[df['japanese'].notna()]
-    
-    # ダミーリストの作成
-    df['dummy_list'] = df['dummies'].apply(lambda x: [i.strip() for i in str(x).split(',')])
-    return df
-
-df = load_data()
 
 # --- 2. セッション状態の初期化 ---
 # まだ変数が作られていなければ、初期値をセットする
@@ -328,7 +329,13 @@ elif mode == "学習":
         if pd.isna(word_row['example']):
             st.info("ℹ️ 例文がまだ登録されていません")
         else:
-            st.write(f"例文: *{word_row['example']}*")
+            # カム区切りの文字列をリストに分割（前後の余白も削除）
+            examples = [e.strip() for e in str(word_row['example']).split(',') if e.strip()]
+            
+            st.write("例文:")
+            # 分割した例文を1つずつ改行して（箇条書きで）表示
+            for ex in examples:
+                st.markdown(f"- *{ex}*")
 
         st.caption(f"レベル: {word_row['level']} / テーマ: {word_row['theme']}")
         
